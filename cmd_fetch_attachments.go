@@ -13,7 +13,7 @@ import (
 	"strings"
 )
 
-func fetchAttachments(inputArchive string, outputArchive string) error {
+func fetchAttachments(inputArchive string, outputArchive string, slackApiToken string) error {
 
 	// Check the parameters.
 	if len(inputArchive) == 0 {
@@ -75,7 +75,7 @@ func fetchAttachments(inputArchive string, outputArchive string) error {
 		splits := strings.Split(file.Name, "/")
 		if len(splits) == 2 && !strings.HasPrefix(splits[0], "__") && strings.HasSuffix(splits[1], ".json") {
 			// Parse this file.
-			err = processChannelFile(w, file, inBuf)
+			err = processChannelFile(w, file, inBuf, slackApiToken)
 			if err != nil {
 				fmt.Printf("%s", err)
 				os.Exit(1)
@@ -92,7 +92,7 @@ func fetchAttachments(inputArchive string, outputArchive string) error {
 	return nil
 }
 
-func processChannelFile(w *zip.Writer, file *zip.File, inBuf []byte) error {
+func processChannelFile(w *zip.Writer, file *zip.File, inBuf []byte, slackApiToken string) error {
 
 	// Parse the JSON of the file.
 	var posts []SlackPost
@@ -130,10 +130,14 @@ func processChannelFile(w *zip.Writer, file *zip.File, inBuf []byte) error {
 			// Figure out the download URL to use.
 			var downloadUrl string
 			if len(file.UrlPrivateDownload) > 0 {
+				log.Printf("+++++ Using UrlPrivateDownload: %s", file.UrlPrivateDownload)
 				downloadUrl = file.UrlPrivateDownload
 			} else {
+				log.Printf("+++++ Using UrlPrivate: %s", file.UrlPrivate)
 				downloadUrl = file.UrlPrivate
 			}
+
+
 
 			// Build the output file path.
 			outputPath := "__uploads/" + file.Id + "/" + file.Name
@@ -145,13 +149,30 @@ func processChannelFile(w *zip.Writer, file *zip.File, inBuf []byte) error {
 				continue
 			}
 
-			// Fetch the file.
-			response, err := http.Get(downloadUrl)
+			client := &http.Client{}
+			req, err := http.NewRequest("GET", downloadUrl, nil)
 			if err != nil {
-				log.Print("++++++ Failed to donwload the file: " + downloadUrl)
+				log.Printf("Got error %s when building the request", err.Error())
+				continue
+			}
+
+			req.Header.Set("Authorization", "Bearer "+slackApiToken)
+			response, err := client.Do(req)
+
+			if err != nil {
+				log.Print("++++++ Failed to download the file: " + downloadUrl)
+				log.Print("++++++ Error: " + err.Error() + "\n")
 				continue
 			}
 			defer response.Body.Close()
+
+			// Fetch the file.
+			// response, err := http.Get(downloadUrl)
+			// if err != nil {
+			// 	log.Print("++++++ Failed to donwload the file: " + downloadUrl)
+			// 	continue
+			// }
+			// defer response.Body.Close()
 
 			// Save the file to the output zip file.
 			_, err = io.Copy(outFile, response.Body)

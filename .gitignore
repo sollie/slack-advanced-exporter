@@ -3,10 +3,13 @@
 go.mod
 go.sum
 
+dist/
+
 COOKIE
 TOKEN
 export/
 files/
+*.zip
 export.zip
 input.zip
 output.zip

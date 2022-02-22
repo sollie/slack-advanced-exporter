@@ -1,20 +1,24 @@
 #!/bin/bash
 
-rm ./slack-advanced-exporter ./slack-advanced-exporter.darwin-amd64.tar.gz ./slack-advanced-exporter.linux-amd64.tar.gz ./slack-advanced-exporter.windows-amd64.zip
+if [[ ! -d ./dist ]]; then
+	mkdir ./dist
+else
+	rm -rf ./dist/*
+fi
 
 echo "Building macOS"
 env GOOS=darwin GOARCH=amd64 go build .
-tar -czf slack-advanced-exporter.darwin-amd64.tar.gz slack-advanced-exporter
+tar -czf ./dist/slack-advanced-exporter.darwin-amd64.tar.gz slack-advanced-exporter
 rm ./slack-advanced-exporter
 
 echo "Building Linux"
 env GOOS=linux GOARCH=amd64 go build .
-tar -czf slack-advanced-exporter.linux-amd64.tar.gz slack-advanced-exporter
+tar -czf ./dist/slack-advanced-exporter.linux-amd64.tar.gz slack-advanced-exporter
 rm ./slack-advanced-exporter
 
 echo "Building Windows"
 env GOOS=windows GOARCH=amd64 go build .
-zip -q slack-advanced-exporter.windows-amd64.zip slack-advanced-exporter.exe
+zip -q ./dist/slack-advanced-exporter.windows-amd64.zip slack-advanced-exporter.exe
 rm ./slack-advanced-exporter.exe
 
-sha256sum ./slack-advanced-exporter.*
+sha256sum ./dist/slack-advanced-exporter.* > ./dist/checksums.txt

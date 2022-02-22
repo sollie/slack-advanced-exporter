@@ -16,7 +16,7 @@ Installation
 ------------
 
 Release binaries can be downloaded from release tags on Github
-[here](https://github.com/grundleborg/slack-advanced-exporter/releases).
+[here](/icelander/slack-advanced-exporter/releases).
 
 Usage
 -----
