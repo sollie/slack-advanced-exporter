@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"archive/zip"
@@ -9,23 +9,26 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/spf13/cobra"
 )
 
-func fetchEmails(inputArchive string, outputArchive string, slackApiToken string) error {
-	// Check the parameters.
-	if len(inputArchive) == 0 {
-		fmt.Printf("fetch-emails command requires --input-archive to be specified.\n")
-		os.Exit(1)
-	}
-	if len(outputArchive) == 0 {
-		fmt.Printf("fetch-emails command requires --output-archive to be specified.\n")
-		os.Exit(1)
-	}
-	if slackApiToken == "" {
-		fmt.Printf("fetch-emails command requires --api-token to be specified.\n")
-		os.Exit(1)
-	}
+var (
+	emailsApiToken string
+)
 
+var fetchEmailsCmd = &cobra.Command{
+	Use:   "fetch-emails",
+	Short: "Fetch all file attachments and add them to the output archive",
+	RunE:  fetchEmails,
+}
+
+func init() {
+	fetchEmailsCmd.PersistentFlags().StringVar(&emailsApiToken, "api-token", "", "Slack API token. Can be obtained here: https://api.slack.com/docs/oauth-test-tokens")
+	fetchEmailsCmd.MarkPersistentFlagRequired("api-token")
+}
+
+func fetchEmails(cmd *cobra.Command, args []string) error {
 	// Open the input archive.
 	r, err := zip.OpenReader(inputArchive)
 	if err != nil {
@@ -47,6 +50,8 @@ func fetchEmails(inputArchive string, outputArchive string, slackApiToken string
 
 	// Run through all the files in the input archive.
 	for _, file := range r.File {
+		verbosePrintln(fmt.Sprintf("Processing file: %s\n", file.Name))
+
 		// Open the file from the input archive.
 		inReader, err := file.Open()
 		if err != nil {
@@ -64,7 +69,7 @@ func fetchEmails(inputArchive string, outputArchive string, slackApiToken string
 		}
 
 		if file.Name == "users.json" {
-			err = processUsersJson(outFile, inReader, slackApiToken)
+			err = processUsersJson(outFile, inReader, emailsApiToken)
 			if err != nil {
 				fmt.Printf("Failed to fetch users' emails.\n\n%s", err)
 				os.Exit(1)
@@ -88,6 +93,8 @@ func fetchEmails(inputArchive string, outputArchive string, slackApiToken string
 }
 
 func processUsersJson(output io.Writer, input io.Reader, slackApiToken string) error {
+	verbosePrintln("Found users.json file.")
+
 	// We want to preserve all existing fields in JSON.
 	// By using interface{} (instead of struct), we can avoid describing all
 	// the fields (new ones might be added by Slack devs in the future!) at the cost of
@@ -106,6 +113,8 @@ func processUsersJson(output io.Writer, input io.Reader, slackApiToken string) e
 	if len(data) == 0 {
 		return errors.New("Failed to find any users in users.json. Looks like something went wrong.")
 	}
+
+	verbosePrintln("Updating users.json contents with fetched emails.")
 
 	for _, user := range data {
 		// These 'ok's only check for type assertion success.
@@ -133,6 +142,8 @@ func processUsersJson(output io.Writer, input io.Reader, slackApiToken string) e
 }
 
 func fetchUserEmails(token string) (map[string]string, error) {
+	verbosePrintln("Fetching emails from Slack API")
+
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", "https://slack.com/api/users.list", nil)
 	if err != nil {
@@ -167,6 +178,8 @@ func fetchUserEmails(token string) (map[string]string, error) {
 	if !data.Ok {
 		return nil, errors.New("Unexpected lack of ok=true in Slack API response. Is access token correct?")
 	}
+
+	verbosePrintln("Fetched emails from Slack API. Now building a map of them to process.")
 
 	res := make(map[string]string)
 	for _, user := range data.Members {

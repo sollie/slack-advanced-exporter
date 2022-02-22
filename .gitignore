@@ -1,7 +1,8 @@
 .DS_Store
 
-go.mod
-go.sum
+slack-advanced-exporter.darwin-amd64.tar.gz
+slack-advanced-exporter.linux-amd64.tar.gz
+slack-advanced-exporter.windows-amd64.zip
 
 dist/
 
@@ -15,3 +16,7 @@ input.zip
 output.zip
 /slack-advanced-exporter
 
+.idea
+
+build/
+release/
