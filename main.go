@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/grundleborg/slack-advanced-exporter/cmd"
+	"github.com/sollie/slack-advanced-exporter/cmd"
 )
 
 func main() {
